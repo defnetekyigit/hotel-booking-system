@@ -35,7 +35,7 @@ jobs:
               --source ./services/hotel-service \
               --region europe-west1 \
               --service-account $SERVICE_ACCOUNT \
-              --set-secrets=/temp/.env=projects/305796297986/secrets/hotel-service-prod-env:latest \
+              --set-secrets=/temp/.env=projects/864918801742/secrets/hotel-service-prod-env:latest \
               --quiet
 
 workflows:  
