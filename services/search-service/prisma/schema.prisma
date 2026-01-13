@@ -1,0 +1,38 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Hotel {
+  id      String @id
+  name    String
+  city    String
+  country String
+  address String
+
+  rooms   Room[]
+}
+
+model Room {
+  id        String @id
+  hotelId  String
+  capacity Int
+  basePrice Float
+
+  hotel        Hotel @relation(fields: [hotelId], references: [id])
+  availability RoomAvailability[]
+}
+
+model RoomAvailability {
+  id          String   @id
+  roomId      String
+  date        DateTime
+  isAvailable Boolean
+  price       Float
+
+  room Room @relation(fields: [roomId], references: [id])
+}

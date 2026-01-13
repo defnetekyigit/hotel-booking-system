@@ -1,0 +1,48 @@
+version: 2.1
+
+parameters:
+  project-id:
+    type: string
+    default: "hotel-booking-484218"
+  service-account:
+    type: string
+    default: "hotel-booking-sa@hotel-booking-484218.iam.gserviceaccount.com"
+  run-hotel-service:
+    type: boolean
+    default: false
+
+jobs:
+  deploy-hotel-service:
+    docker:
+      - image: gcr.io/google.com/cloudsdktool/google-cloud-cli:530.0.0-slim
+    environment:
+      PROJECT_ID: << pipeline.parameters.project-id >>
+      SERVICE_ACCOUNT: << pipeline.parameters.service-account >>
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Deploy Hotel Service
+          command: |
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+            gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+            gcloud config set project $PROJECT_ID
+
+            gcloud run deploy hotel-booking-hotel-service \
+              --source ./services/hotel-service \
+              --region europe-west1 \
+              --service-account $SERVICE_ACCOUNT \
+              --set-secrets=/temp/.env=projects/305796297986/secrets/hotel-service-prod-env:latest \
+              --quiet
+
+workflows:  
+  deploy-hotel-service:
+    when:
+      or:
+        - << pipeline.parameters.run-hotel-service >> 
+    jobs: 
+      - deploy-hotel-service:
+          filters:
+            branches:
+              only: main    

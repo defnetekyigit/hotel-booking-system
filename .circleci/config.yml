@@ -1,0 +1,16 @@
+version: 2.1
+setup: true
+orbs:
+  path-filtering: circleci/path-filtering@0.0.2
+
+workflows:
+  hotel-booking-system-monorepo-setup:
+    jobs:
+      - path-filtering/filter:
+          filters:
+            branches:
+              only: main
+          base-revision: main
+          mapping: |
+            services/hotel-service/.* run-hotel-service true
+          config-path: .circleci/monorepo-pipeline.yml
