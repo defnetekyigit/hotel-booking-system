@@ -1,34 +1,40 @@
-import { prisma } from "../prisma";
+import { pool } from "../db";
 
 export class HotelService {
-  static listHotels() {
-    return prisma.hotel.findMany({
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        country: true,
-        address: true,
-      },
-    });
+  static async listHotels() {
+    const { rows } = await pool.query(`
+      SELECT id, name, city, country, address
+      FROM "Hotel"
+    `);
+
+    return rows;
   }
 
-  static getHotelRooms(hotelId: string) {
-    return prisma.room.findMany({
-      where: { hotelId },
-      select: {
-        id: true,
-        type: true,
-        capacity: true,
-        basePrice: true,
-      },
-    });
+  static async getHotelRooms(hotelId: string) {
+    const { rows } = await pool.query(
+      `
+      SELECT id, type, capacity, "basePrice"
+      FROM "Room"
+      WHERE "hotelId" = $1
+      `,
+      [hotelId]
+    );
+
+    return rows;
   }
 
-  static getRoomAvailability(roomId: string) {
-    return prisma.roomAvailability.findMany({
-      where: { roomId, isAvailable: true },
-      orderBy: { date: "asc" },
-    });
+  static async getRoomAvailability(roomId: string) {
+    const { rows } = await pool.query(
+      `
+      SELECT *
+      FROM "RoomAvailability"
+      WHERE "roomId" = $1
+        AND "isAvailable" = true
+      ORDER BY date ASC
+      `,
+      [roomId]
+    );
+
+    return rows;
   }
 }

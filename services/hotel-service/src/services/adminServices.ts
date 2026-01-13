@@ -1,4 +1,4 @@
-import { prisma } from "../prisma";
+import { pool } from "../db";
 import dayjs from "dayjs";
 
 export class AdminService {
@@ -9,10 +9,18 @@ export class AdminService {
     address: string;
     adminUserId: string;
   }) {
-    console.log("Creating hotel with data", data);
-    return prisma.hotel.create({
-      data,
-    });
+    const { name, city, country, address, adminUserId } = data;
+
+    const { rows } = await pool.query(
+      `
+      INSERT INTO "Hotel" (id, name, city, country, address, "adminUserId", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, now(), now())
+      RETURNING *
+      `,
+      [name, city, country, address, adminUserId]
+    );
+
+    return rows[0];
   }
 
   static async createRoom(data: {
@@ -21,10 +29,18 @@ export class AdminService {
     capacity: number;
     basePrice: number;
   }) {
-    console.log("Creating room with data", data);
-    return prisma.room.create({
-      data,
-    });
+    const { hotelId, type, capacity, basePrice } = data;
+
+    const { rows } = await pool.query(
+      `
+      INSERT INTO "Room" (id, "hotelId", type, capacity, "basePrice", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())
+      RETURNING *
+      `,
+      [hotelId, type, capacity, basePrice]
+    );
+
+    return rows[0];
   }
 
   static async createRoomAvailability(params: {
@@ -46,30 +62,33 @@ export class AdminService {
       throw new Error("End date must be after start date");
     }
 
-    const days: {
-      roomId: string;
-      date: Date;
-      price: number;
-      isAvailable: boolean;
-    }[] = [];
+    const values: any[] = [];
+    const placeholders: string[] = [];
 
+    let i = 1;
     let current = start;
 
     while (current.isSame(end) || current.isBefore(end)) {
-      days.push({
+      placeholders.push(
+        `($${i++}, $${i++}, $${i++}, $${i++})`
+      );
+      values.push(
+        crypto.randomUUID(),
         roomId,
-        date: current.toDate(),
-        price,
-        isAvailable: true,
-      });
+        current.toDate(),
+        price
+      );
       current = current.add(1, "day");
     }
 
-    await prisma.roomAvailability.createMany({
-      data: days,
-      skipDuplicates: true, // @@unique(roomId, date)
-    });
+    const query = `
+      INSERT INTO "RoomAvailability" (id, "roomId", date, price, "isAvailable")
+      VALUES ${placeholders.join(",")}
+      ON CONFLICT ("roomId", date) DO NOTHING
+    `;
 
-    return { daysCreated: days.length };
+    await pool.query(query, values);
+
+    return { daysCreated: placeholders.length };
   }
 }

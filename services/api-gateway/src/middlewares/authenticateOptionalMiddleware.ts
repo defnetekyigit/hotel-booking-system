@@ -1,7 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { firebaseAdmin } from "../config/firebase";
-import { prisma } from "../prisma";
 import { AuthRequest } from "./authMiddleware";
+import { pool } from "../db";
+
 export async function authenticateOptional(
   req: AuthRequest,
   _res: Response,
@@ -17,9 +18,12 @@ export async function authenticateOptional(
     const token = header.slice("Bearer ".length);
     const decoded = await firebaseAdmin.auth().verifyIdToken(token);
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.uid },
-    });
+    const { rows } = await pool.query(
+      `SELECT id, email, role FROM "User" WHERE id = $1`,
+      [decoded.uid]
+    );
+
+    const user = rows[0];
 
     if (user) {
       req.user = {
@@ -29,7 +33,7 @@ export async function authenticateOptional(
       };
     }
   } catch {
-    // ignore invalid token
+    // invalid token → ignore
   }
 
   next();

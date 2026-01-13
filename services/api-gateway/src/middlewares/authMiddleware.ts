@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { firebaseAdmin } from "../config/firebase";
-import { prisma } from "../prisma";
+import { pool } from "../db";
 
 export interface AuthRequest extends Request {
   user?: {
-    id: string;  
+    id: string;
     email?: string;
     role: "USER" | "ADMIN";
   };
@@ -24,20 +24,22 @@ export async function authenticate(
     const token = header.slice("Bearer ".length);
     const decoded = await firebaseAdmin.auth().verifyIdToken(token);
 
-    // USER UPSERT
-    const user = await prisma.user.upsert({
-      where: { id: decoded.uid },
-      update: {},
-      create: {
-        id: decoded.uid,
-        email: decoded.email!,
-        role: "USER",
-      },
-    });
+    const { rows } = await pool.query(
+      `
+      INSERT INTO "User" (id, email, role)
+      VALUES ($1, $2, 'USER')
+      ON CONFLICT (id)
+      DO UPDATE SET email = EXCLUDED.email
+      RETURNING id, email, role
+      `,
+      [decoded.uid, decoded.email]
+    );
+
+    const user = rows[0];
 
     req.user = {
       id: user.id,
-      email: user.email!,
+      email: user.email,
       role: user.role,
     };
 

@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "./authMiddleware";
-import { prisma } from "../prisma";
+import { pool } from "../db";
 
 export async function requireAdmin(
   req: AuthRequest,
@@ -11,9 +11,12 @@ export async function requireAdmin(
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
-  });
+  const { rows } = await pool.query(
+    `SELECT role FROM "User" WHERE id = $1`,
+    [req.user.id]
+  );
+
+  const user = rows[0];
 
   if (!user || user.role !== "ADMIN") {
     return res.status(403).json({ message: "Admin only" });
