@@ -25,7 +25,10 @@ jobs:
       - run:
           name: Deploy Hotel Service
           command: |
-            gcloud auth activate-service-account $SERVICE_ACCOUNT
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+
+            gcloud auth activate-service-account \
+              --key-file=/tmp/gcp-key.json            
             gcloud config set project $PROJECT_ID
 
             gcloud run deploy hotel-booking-hotel-service \
