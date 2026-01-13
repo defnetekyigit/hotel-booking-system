@@ -32,9 +32,9 @@ jobs:
             gcloud config set project $PROJECT_ID
 
             gcloud run deploy hotel-booking-hotel-service \
-              --clear-secrets \
               --source ./services/hotel-service \
               --region europe-west1 \
+              --set-secrets=/temp/.env=projects/864918801742/secrets/hotel-service-prod-env:latest \
               --service-account $SERVICE_ACCOUNT \
               --quiet
 
