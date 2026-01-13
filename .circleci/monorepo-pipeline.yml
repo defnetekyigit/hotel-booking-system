@@ -6,7 +6,7 @@ parameters:
     default: "hotel-booking-484218"
   service-account:
     type: string
-    default: "159141908748-compute@developer.gserviceaccount.com"
+    default: "hotel-booking-sa@hotel-booking-484218.iam.gserviceaccount.com"
   run-hotel-service:
     type: boolean
     default: false
