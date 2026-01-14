@@ -126,6 +126,7 @@ jobs:
               --region europe-west1 \
               --set-secrets=/temp/.env=projects/864918801742/secrets/api-gateway-prod-env:latest \
               --service-account $SERVICE_ACCOUNT \
+              --ingress=all \
               --quiet 
 
   deploy-notification-service:
