@@ -1,5 +1,6 @@
 import { pool } from "../db";
 import dayjs from "dayjs";
+import { randomUUID } from "crypto";
 
 export class AdminService {
   static async createHotel(data: {
@@ -73,7 +74,7 @@ export class AdminService {
         `($${i++}, $${i++}, $${i++}, $${i++})`
       );
       values.push(
-        crypto.randomUUID(),
+        randomUUID(),
         roomId,
         current.toDate(),
         price
