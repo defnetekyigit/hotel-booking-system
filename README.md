@@ -1,7 +1,7 @@
 🏨 Hotel Booking System – SE4458 Final Project
 This project is a cloud-native Hotel Booking System.
 The system is inspired by Hotels.com and implements the required functional and non-functional requirements, including microservices, API Gateway, authentication, queue-based notifications, scheduled jobs, and cloud deployment.
-
+here is my demo video link: https://drive.google.com/file/d/1fv7Q6A-ngUHVg5zCSxQ0uTMczvRwW4nZ/view?usp=sharing
 🌐 Live Deployment URLs
 Frontend (Vercel)
 User & Admin UI:
@@ -137,3 +137,4 @@ Notifications
 📌 Assumptions
 Payment flow is intentionally skipped.
 Room availability is managed per day.
+
