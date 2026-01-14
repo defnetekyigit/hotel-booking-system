@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { sendBookingMail } from "../mail/mailer";
+import { pool } from "../db";
 
 export async function bookingHandler(req: Request, res: Response) {
   try {
@@ -14,12 +15,22 @@ export async function bookingHandler(req: Request, res: Response) {
 
     console.log("📩 Booking event received:", payload);
 
-    // örnek payload:
-    // { bookingId, userId, roomId, startDate, endDate }
+    const { userId } = payload;
 
-    await sendBookingMail("yourmail@gmail.com", payload);
+    const { rows } = await pool.query(
+      `SELECT email FROM "User" WHERE id = $1`,
+      [userId]
+    );
 
-    res.status(204).send(); // ACK
+    const user = rows[0];
+    if (!user?.email) {
+      console.warn("User email not found for booking", payload.bookingId);
+      return res.status(204).send();
+    }
+
+    await sendBookingMail(user.email, payload);
+
+    res.status(204).send();
   } catch (err) {
     console.error("PubSub handler error", err);
     res.status(500).send();
