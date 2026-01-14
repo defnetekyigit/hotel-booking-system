@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
-dotenv.config();
+
+dotenv.config({ path: "/temp/.env" });
+
 import express from "express";
 import cors from "cors";
 import searchRoutes from "./routes/searchRoutes";
