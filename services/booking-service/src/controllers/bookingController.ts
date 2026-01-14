@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { BookingService } from "../services/bookingService";
-import { publishBookingCreated } from "../queue/rabbit";
+import { publishBookingCreated } from "../pubsub/publisher";
 
 export class BookingController {
   static async create(req: Request, res: Response) {

@@ -1,5 +1,5 @@
-import { prisma } from "../prisma";
 import dayjs from "dayjs";
+import { pool } from "../db";
 
 export class SearchService {
   static async searchAvailableRooms(params: {
@@ -11,8 +11,8 @@ export class SearchService {
   }) {
     const { city, startDate, endDate, guests, isLoggedIn } = params;
 
-    const start = dayjs(startDate);
-    const end = dayjs(endDate);
+    const start = dayjs(startDate).startOf("day");
+    const end = dayjs(endDate).startOf("day");
 
     if (!start.isValid() || !end.isValid() || end.isBefore(start)) {
       throw new Error("Invalid date range");
@@ -20,44 +20,61 @@ export class SearchService {
 
     const requiredDays = end.diff(start, "day") + 1;
 
-    const rooms = await prisma.room.findMany({
-      where: {
-        capacity: { gte: guests },
-        hotel: { city },
-        availability: {
-          some: {
-            date: {
-              gte: start.toDate(),
-              lte: end.toDate(),
-            },
-            isAvailable: true,
-          },
-        },
-      },
-      include: {
-        hotel: true,
-        availability: {
-          where: {
-            date: {
-              gte: start.toDate(),
-              lte: end.toDate(),
-            },
-            isAvailable: true,
-          },
-        },
-      },
-    });
-
     const discountMultiplier = isLoggedIn ? 0.9 : 1;
-    
-    return rooms
-      .filter((room) => room.availability.length === requiredDays)
-      .map((room) => ({
-        ...room,
-        availability: room.availability.map((a) => ({
-          ...a,
-          price: Number((a.price * discountMultiplier).toFixed(2)),
-        })),
-      }));
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        r.id              AS "roomId",
+        r.type            AS "roomType",
+        r.capacity,
+        r."basePrice",
+        h.id              AS "hotelId",
+        h.name            AS "hotelName",
+        h.city,
+        h.country,
+        h.address,
+        json_agg(
+          json_build_object(
+            'date', ra.date,
+            'price', ROUND(ra.price * $6, 2)
+          )
+          ORDER BY ra.date
+        ) AS availability
+      FROM "Room" r
+      JOIN "Hotel" h ON h.id = r."hotelId"
+      JOIN "RoomAvailability" ra ON ra."roomId" = r.id
+      WHERE
+        h.city = $1
+        AND r.capacity >= $2
+        AND ra.date BETWEEN $3 AND $4
+        AND ra."isAvailable" = true
+      GROUP BY r.id, h.id
+      HAVING COUNT(ra.id) = $5
+      `,
+      [
+        city,
+        guests,
+        start.toDate(),
+        end.toDate(),
+        requiredDays,
+        discountMultiplier,
+      ]
+    );
+
+    return rows.map((row) => ({
+      id: row.roomId,
+      type: row.roomType,
+      capacity: row.capacity,
+      basePrice: row.basePrice,
+      hotel: {
+        id: row.hotelId,
+        name: row.hotelName,
+        city: row.city,
+        country: row.country,
+        address: row.address,
+      },
+      availability: row.availability,
+    }));
   }
 }

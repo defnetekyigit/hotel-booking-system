@@ -1,0 +1,24 @@
+import { Request, Response } from "express";
+import dayjs from "dayjs";
+import { sendBookingMail } from "../mail/mailer";
+import pool from "../db";
+
+export async function reminderHandler(_: Request, res: Response) {
+  const tomorrow = dayjs().add(1, "day").startOf("day");
+  const end = tomorrow.endOf("day");
+
+  const { rows } = await pool.query(
+    `
+    SELECT *
+    FROM "Booking"
+    WHERE "startDate" BETWEEN $1 AND $2
+    `,
+    [tomorrow.toDate(), end.toDate()]
+  );
+
+  for (const booking of rows) {
+    await sendBookingMail("yourmail@gmail.com", booking);
+  }
+
+  res.send({ sent: rows.length });
+}

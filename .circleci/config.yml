@@ -13,4 +13,8 @@ workflows:
           base-revision: main
           mapping: |
             services/hotel-service/.* run-hotel-service true
+            services/booking-service/.* run-booking-service true
+            services/search-service/.* run-search-service true
+            services/api-gateway/.* run-api-gateway true
+            services/notification-service/.* run-notification-service true
           config-path: .circleci/monorepo-pipeline.yml

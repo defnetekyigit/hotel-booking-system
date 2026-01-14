@@ -1,6 +1,6 @@
-import { Prisma } from "@prisma/client";
-import { prisma } from "../prisma";
 import dayjs from "dayjs";
+import { pool } from "../db";
+import { publishBookingCreated } from "../pubsub/publisher";
 
 export class BookingService {
   static async createBooking(params: {
@@ -21,55 +21,91 @@ export class BookingService {
 
     const days: Date[] = [];
     let current = start;
-    while (current.isBefore(end) || current.isSame(end, "day")) {
+    while (current.isSame(end) || current.isBefore(end)) {
       days.push(current.toDate());
       current = current.add(1, "day");
     }
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const availableCount = await tx.roomAvailability.count({
-        where: {
-          roomId,
-          date: { in: days },
-          isAvailable: true,
-        },
-      });
+    const client = await pool.connect();
 
-      if (availableCount !== days.length) {
+    try {
+      await client.query("BEGIN");
+
+      const { rows: availability } = await client.query(
+        `
+        SELECT COUNT(*)::int AS count
+        FROM "RoomAvailability"
+        WHERE "roomId" = $1
+          AND date = ANY($2)
+          AND "isAvailable" = true
+        `,
+        [roomId, days]
+      );
+
+      if (availability[0].count !== days.length) {
         throw new Error("Room not available for selected dates");
       }
 
-      const booking = await tx.booking.create({
-        data: {
+      const { rows: bookings } = await client.query(
+        `
+        INSERT INTO "Booking"
+          (id, "roomId", "userId", "startDate", "endDate", "guestCount", "createdAt")
+        VALUES
+          (gen_random_uuid(), $1, $2, $3, $4, $5, now())
+        RETURNING *
+        `,
+        [
           roomId,
           userId,
-          startDate: start.toDate(),
-          endDate: end.toDate(),
+          start.toDate(),
+          end.toDate(),
           guestCount,
-        },
-      });
+        ]
+      );
 
-      await tx.roomAvailability.updateMany({
-        where: {
-          roomId,
-          date: { in: days },
-        },
-        data: {
-          isAvailable: false,
-        },
-      });
+      const booking = bookings[0];
 
-      // 4️⃣ (ileride) Queue event
-      // await publishBookingEvent(booking);
+      await client.query(
+        `
+        UPDATE "RoomAvailability"
+        SET "isAvailable" = false
+        WHERE "roomId" = $1
+          AND date = ANY($2)
+        `,
+        [roomId, days]
+      );
+
+      await client.query("COMMIT");
+
+      // Pub/Sub event 
+      await publishBookingCreated({
+        bookingId: booking.id,
+        roomId,
+        userId,
+        startDate,
+        endDate,
+      });
 
       return booking;
-    });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
-  // BookingService
-  static getUserBookings(userId: string) {
-    return prisma.booking.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
+
+  static async getUserBookings(userId: string) {
+    const { rows } = await pool.query(
+      `
+      SELECT *
+      FROM "Booking"
+      WHERE "userId" = $1
+      ORDER BY "createdAt" DESC
+      `,
+      [userId]
+    );
+
+    return rows;
   }
 }

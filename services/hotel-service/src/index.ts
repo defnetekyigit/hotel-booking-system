@@ -20,4 +20,5 @@ app.use("/", hotelRoutes);
 const PORT = process.env.PORT || 4001;
 app.listen(PORT, () => {
   console.log(`Hotel Service running on port ${PORT}`);
+  console.log("DATABASE_URL exists?", !!process.env.DATABASE_URL);
 });

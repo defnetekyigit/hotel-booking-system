@@ -10,6 +10,18 @@ parameters:
   run-hotel-service:
     type: boolean
     default: false
+  run-booking-service:
+    type: boolean
+    default: false
+  run-search-service:
+    type: boolean
+    default: false
+  run-api-gateway:
+    type: boolean
+    default: false
+  run-notification-service:
+    type: boolean
+    default: false
 
 jobs:
   deploy-hotel-service:
@@ -38,6 +50,106 @@ jobs:
               --service-account $SERVICE_ACCOUNT \
               --quiet
 
+  deploy-booking-service:
+    docker:
+      - image: gcr.io/google.com/cloudsdktool/google-cloud-cli:530.0.0-slim
+    environment:
+      PROJECT_ID: << pipeline.parameters.project-id >>
+      SERVICE_ACCOUNT: << pipeline.parameters.service-account >>
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Deploy Booking Service
+          command: |
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+
+            gcloud auth activate-service-account \
+              --key-file=/tmp/gcp-key.json            
+            gcloud config set project $PROJECT_ID
+
+            gcloud run deploy hotel-booking-booking-service \
+              --source ./services/booking-service \
+              --region europe-west1 \
+              --set-secrets=/temp/.env=projects/864918801742/secrets/booking-service-prod-env:latest \
+              --service-account $SERVICE_ACCOUNT \
+              --quiet
+
+  deploy-search-service:
+    docker:
+      - image: gcr.io/google.com/cloudsdktool/google-cloud-cli:530.0.0-slim
+    environment:
+      PROJECT_ID: << pipeline.parameters.project-id >>
+      SERVICE_ACCOUNT: << pipeline.parameters.service-account >>
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - run:
+          name: Deploy Search Service
+          command: |
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+
+            gcloud auth activate-service-account \
+              --key-file=/tmp/gcp-key.json            
+            gcloud config set project $PROJECT_ID
+
+            gcloud run deploy hotel-booking-search-service \
+              --source ./services/search-service \
+              --region europe-west1 \
+              --set-secrets=/temp/.env=projects/864918801742/secrets/search-service-prod-env:latest \
+              --service-account $SERVICE_ACCOUNT \
+              --quiet 
+
+  deploy-api-gateway:
+    docker:
+      - image: gcr.io/google.com/cloudsdktool/google-cloud-cli:530.0.0-slim
+    environment:
+      PROJECT_ID: << pipeline.parameters.project-id >>
+      SERVICE_ACCOUNT: << pipeline.parameters.service-account >>
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Deploy API Gateway
+          command: |
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+            gcloud auth activate-service-account \
+              --key-file=/tmp/gcp-key.json            
+            gcloud config set project $PROJECT_ID
+
+            gcloud run deploy hotel-booking-api-gateway \
+              --source ./services/api-gateway \
+              --region europe-west1 \
+              --set-secrets=/temp/.env=projects/864918801742/secrets/api-gateway-prod-env:latest \
+              --service-account $SERVICE_ACCOUNT \
+              --quiet
+
+  deploy-notification-service:
+    docker:
+      - image: gcr.io/google.com/cloudsdktool/google-cloud-cli:530.0.0-slim
+    environment:
+      PROJECT_ID: << pipeline.parameters.project-id >>
+      SERVICE_ACCOUNT: << pipeline.parameters.service-account >>
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Deploy Notification Service
+          command: |
+            echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+            gcloud auth activate-service-account \
+              --key-file=/tmp/gcp-key.json        
+            gcloud config set project $PROJECT_ID
+
+            gcloud run deploy hotel-booking-notification-service \
+              --source ./services/notification-service \
+              --region europe-west1 \ 
+              --set-secrets=/temp/.env=projects/864918801742/secrets/notification-service-prod-env:latest \
+              --service-account $SERVICE_ACCOUNT \
+              --quiet
+
 workflows:  
   deploy-hotel-service:
     when:
@@ -47,4 +159,40 @@ workflows:
       - deploy-hotel-service:
           filters:
             branches:
-              only: main    
+              only: main  
+  deploy-booking-service:
+    when:
+      or:
+        - << pipeline.parameters.run-booking-service >> 
+    jobs: 
+      - deploy-booking-service:
+          filters:
+            branches:
+              only: main  
+  deploy-search-service:
+    when:
+      or:
+        - << pipeline.parameters.run-search-service >> 
+    jobs: 
+      - deploy-search-service:
+          filters:
+            branches:
+              only: main
+  deploy-api-gateway:
+    when:   
+      or:
+        - << pipeline.parameters.run-api-gateway >> 
+    jobs: 
+      - deploy-api-gateway:
+          filters:
+            branches:
+              only: main  
+  deploy-notification-service:
+    when: 
+      or:
+        - << pipeline.parameters.run-notification-service >> 
+    jobs: 
+      - deploy-notification-service:
+          filters:
+            branches:
+              only: main 
