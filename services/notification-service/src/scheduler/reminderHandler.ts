@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import dayjs from "dayjs";
-import { sendBookingMail } from "../mail/mailer";
+import { senReminderMail } from "../mail/mailer";
 import { pool } from "../db";
 
 export async function reminderHandler(_: Request, res: Response) {
@@ -20,7 +20,7 @@ export async function reminderHandler(_: Request, res: Response) {
   );
 
   for (const booking of rows) {
-    await sendBookingMail(booking.email, booking);
+    await senReminderMail(booking.email, booking);
   }
 
   res.send({ sent: rows.length });
