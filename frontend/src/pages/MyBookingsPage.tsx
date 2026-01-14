@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/api";
 import { useAuth } from "../auth/AuthContext";
+import dayjs from "dayjs";
 
 type Booking = {
   id: string;
+  roomId: string;
   startDate: string;
   endDate: string;
-  room: {
-    type: string;
-    hotel: {
-      name: string;
-      city: string;
-    };
-  };
+  guestCount: number;
+  createdAt: string;
 };
 
 export default function MyBookingsPage() {
@@ -23,13 +20,12 @@ export default function MyBookingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 🔴 user yoksa veya auth hâlâ yükleniyorsa → ÇIK
     if (authLoading || !user) return;
 
     const fetchBookings = async () => {
       try {
         const res = await api.get("/api/v1/bookings");
-        setBookings(res.data.items ?? res.data);
+        setBookings(res.data);
       } catch (err: any) {
         setError(
           err?.response?.data?.message ??
@@ -60,38 +56,69 @@ export default function MyBookingsPage() {
     return <p style={{ color: "red", padding: 32 }}>{error}</p>;
   }
 
+  /**
+   * ✅ roomId bazlı gruplama
+   */
+  const groupedBookings = bookings.reduce<Record<string, Booking[]>>(
+    (acc, booking) => {
+      if (!acc[booking.roomId]) {
+        acc[booking.roomId] = [];
+      }
+      acc[booking.roomId].push(booking);
+      return acc;
+    },
+    {}
+  );
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: 32, color: "white" }}>
-      <h1>My Bookings</h1>
+      <h1 style={{ marginBottom: 24 }}>My Bookings</h1>
 
       {bookings.length === 0 && <p>No bookings yet.</p>}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))",
-          gap: 20,
-        }}
-      >
-        {bookings.map((b) => (
+      {Object.entries(groupedBookings).map(([roomId, roomBookings]) => (
+        <div key={roomId} style={{ marginBottom: 40 }}>
+          {/* ROOM HEADER */}
+          <h2 style={{ marginBottom: 4 }}>🛏 Room</h2>
+          <p style={{ fontSize: 12, opacity: 0.6, marginBottom: 16 }}>
+            {roomId}
+          </p>
+
+          {/* BOOKINGS UNDER THIS ROOM */}
           <div
-            key={b.id}
             style={{
-              background: "#2a2a2a",
-              padding: 16,
-              borderRadius: 10,
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))",
+              gap: 16,
             }}
           >
-            <h3>{b.room.hotel.name}</h3>
-            <p>{b.room.hotel.city}</p>
-            <p>Room: {b.room.type}</p>
-            <p>
-              Dates: {b.startDate.slice(0, 10)} →{" "}
-              {b.endDate.slice(0, 10)}
-            </p>
+            {roomBookings.map((b) => (
+              <div
+                key={b.id}
+                style={{
+                  background: "#2a2a2a",
+                  padding: 16,
+                  borderRadius: 10,
+                }}
+              >
+                <p>
+                  <strong>Dates:</strong>{" "}
+                  {dayjs(b.startDate).format("YYYY-MM-DD")} →{" "}
+                  {dayjs(b.endDate).format("YYYY-MM-DD")}
+                </p>
+
+                <p>
+                  <strong>Guests:</strong> {b.guestCount}
+                </p>
+
+                <p style={{ fontSize: 12, opacity: 0.6, marginTop: 8 }}>
+                  Created: {dayjs(b.createdAt).format("YYYY-MM-DD HH:mm")}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
