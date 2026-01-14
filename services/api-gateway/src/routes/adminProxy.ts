@@ -19,10 +19,14 @@ router.use(
       "^/api/v1/admin": "/admin",
     },
     onProxyReq: (proxyReq, req: AuthRequest) => {
-      const hasBody = ["POST", "PUT", "PATCH"].includes(req.method ?? "");
-      if (hasBody && req.body && req.user) {
+      if (req.user) {
         proxyReq.setHeader("x-user-id", req.user.id);
         proxyReq.setHeader("x-user-role", req.user.role);
+      }
+
+      const hasBody = ["POST", "PUT", "PATCH"].includes(req.method ?? "");
+
+      if (hasBody && req.body) {
         const bodyData = JSON.stringify(req.body);
         proxyReq.setHeader("Content-Type", "application/json");
         proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
