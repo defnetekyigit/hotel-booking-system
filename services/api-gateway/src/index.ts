@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import proxyRoutes from "./routes/proxy";
 import adminProxy from "./routes/adminProxy";
+import { authenticate, AuthRequest } from "./middlewares/authMiddleware";
 
 const app = express();
 
@@ -15,7 +16,10 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ status: "api-gateway up" });
 });
-
+// auth me 
+app.get("/api/v1/auth/me", authenticate, (req: AuthRequest, res) => {
+  res.json({ user: req.user });
+});
 app.use("/api/v1/admin", adminProxy);
 app.use("/api/v1", proxyRoutes);
 
