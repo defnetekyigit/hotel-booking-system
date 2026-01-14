@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { sendBookingMail } from "../mail/mailer";
 import { pool } from "../db";
+import { dedupCache } from "../cache/dedupCache";
 
 export async function bookingHandler(req: Request, res: Response) {
   try {
@@ -14,7 +15,15 @@ export async function bookingHandler(req: Request, res: Response) {
     );
 
     console.log("📩 Booking event received:", payload);
+    const dedupKey = `booking-confirmed:${payload.bookingId}`;
+    
+     // 🛑 DUPLICATE CHECK
+    if (dedupCache.has(dedupKey)) {
+      console.log("Duplicate booking-confirmed ignored", payload.bookingId);
+      return res.status(204).send();
+    }
 
+    dedupCache.set(dedupKey, 24 * 60 * 60 * 1000); // 24 saat
     const { userId } = payload;
 
     const { rows } = await pool.query(
