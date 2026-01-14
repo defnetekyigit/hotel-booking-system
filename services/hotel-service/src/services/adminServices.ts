@@ -71,13 +71,14 @@ export class AdminService {
 
     while (current.isSame(end) || current.isBefore(end)) {
       placeholders.push(
-        `($${i++}, $${i++}, $${i++}, $${i++})`
+        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
       );
       values.push(
         randomUUID(),
         roomId,
         current.toDate(),
-        price
+        price,
+        true
       );
       current = current.add(1, "day");
     }
